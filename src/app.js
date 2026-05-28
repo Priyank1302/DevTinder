@@ -17,7 +17,46 @@ app.post('/signup', async (req, res) => {
 
     }
     catch (e) {
-      e.status(400).send("error saving the user"+ e.message)
+      res.status(400).send("error saving the user"+ e.message)
+    }
+})
+
+app.get("/user",async(req,res)=>{
+   const email = req.body.emailId
+   const user =await User.find({emailId:email})
+   res.send(user)
+})
+
+app.get("/feed",async(req,res)=>{
+   
+    try{
+        const user =await User.find({})
+       res.send(user)
+    }
+    catch(e)
+    {
+        res.status(400).send("something went wrong")
+    }
+})
+
+ app.delete("/user", async (req, res) => {
+    try {
+        const userId = req.body.userId; // move inside try!
+        const user = await User.findByIdAndDelete(userId)
+        res.send("User deleted successfully!")
+    } catch(e) {
+        res.status(400).send("something went wrong")
+    }
+})
+
+app.patch("/user",async(req,res)=>{
+    try {
+        const updates =req.body
+        const userId = req.body.userId; // move inside try!
+        const user = await User.findByIdAndUpdate(userId,updates)
+        res.send("User updated successfully!")
+    } catch(e) {
+        res.status(400).send("something went wrong")
     }
 })
 

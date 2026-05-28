@@ -49,11 +49,33 @@ app.get("/feed",async(req,res)=>{
     }
 })
 
-app.patch("/user",async(req,res)=>{
+app.patch("/user/:userId",async(req,res)=>{
     try {
+
+        // {
+        //     "userId":"6a181718052ef82f4376bf82",
+        //     "age": 30,
+        //     "gender": "female"
+        //  } we willl loop thriugh every keys of object requested by user and will check if only every allowed updates is there
         const updates =req.body
-        const userId = req.body.userId; // move inside try!
-        const user = await User.findByIdAndUpdate(userId,updates)
+        const userId = req.params?.userId; // move inside try!
+        const ALLOWED_UPDATES = ["photoURL","about","gender","age","skills"];
+        const isUpdateAllowed = Object.keys(updates).every(k=>ALLOWED_UPDATES.includes(k));
+        if(!isUpdateAllowed)
+        {
+            res.status(400).send("Update not allowed")
+        }
+        if (updates.skills && updates.skills.length > 5) {
+            return res.status(400).send("Skills cannot be more than 5!")
+        }
+        const user = await User.findByIdAndUpdate(
+            userId,      // 1st arg → id
+            updates,     // 2nd arg → what to update
+            { 
+                runValidators: true,      // runs schema validation
+                returnDocument: "after"   // returns updated doc
+            }
+        )
         res.send("User updated successfully!")
     } catch(e) {
         res.status(400).send("something went wrong")

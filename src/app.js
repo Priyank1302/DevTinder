@@ -1,49 +1,31 @@
 const express = require('express');
+
+const connectDb = require("./config/database")
 const app = express();
 
-//this will only handle GET call to /user
-app.get("/user",(req,res)=>{
-    res.send({
-        firstName:"Priyank",
-        lastName : "Gaur",
-        age: 27
-    })
+const User = require("./models/user")
+
+
+app.post('/signup',async(req,res)=>{
+    const userObj = {
+        firstName: "Virat",
+        lastName:" Kohli",
+        emailId: "viratmsd007@gmail.com",
+        password:"virat@123",
+        age: 37,
+        gender:"Male"
+    }
+    //creating a new instance of user model
+    const user = new User(userObj)
+    await user.save();
+    res.send("User added successfully")
 })
 
-app.post("/user",(req,res)=>{
-    //console.log("Save data to database");
-    res.send("Data saved to database")
-})
-
-
-
-
-//this will match all the http api call to /test
-app.use('/test',(req,res)=>{
-    res.send("hello from test route server")
-})
-
-
-
-// app.use('/hello/2',(req,res)=>{
-//     res.send("abracadabra")
-// })
-
-// app.use('/hello',(req,res)=>{
-//     res.send("hello hello hello")
-// })
-
-// app.use((req,res)=>{
-//     res.send("hello from server")
-// })
-
-
-app.listen(3000,()=>{
-    console.log("server listening at 3000")
-});
-
-//Express reads routes TOP TO BOTTOM
-// First match wins!
-
-// Specific routes → always on top
-// Generic/catch-all → always at bottom ✅
+connectDb().then(()=>{
+    console.log("DB connection established")
+    app.listen(3000,()=>{
+        console.log("server listening at 3000")
+    });
+ }).catch((error)=>{
+   console.error("error connecting to db",error)
+ })

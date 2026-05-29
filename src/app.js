@@ -6,64 +6,59 @@ const app = express();
 const User = require("./models/user")
 const { validateSignUpData } = require('./utils/validation')
 const bcrypt = require("bcrypt");
-const jwt = require("jsonwebtoken")
+// const jwt = require("jsonwebtoken")
+const {userAuth} = require("./middlewares/auth")
 const cookieParser = require("cookie-parser");
 app.use(cookieParser());
 app.use(express.json())//reads json object , converts it in js object and we can read that body
-app.post('/signup', async (req, res) => {
 
-    //creating a new instance of user model
+app.post('/signup', async (req, res) => {
     try {
         validateSignUpData(req)
         const { firstName, lastName, emailId, password } = req.body;
-
         const passwordHash = await bcrypt.hash(password, 10)
-
         const user = new User({
-            firstName, lastName, emailId, password: passwordHash
+            firstName, lastName, emailId,
+            password: passwordHash
         })
         await user.save();
         res.send("User added successfully")
-
-    }
-    catch (e) {
-        res.status(400).send("ERROR" + e.message)
+    } catch(e) {
+        res.status(400).send("ERROR: " + e.message)
     }
 })
 
-app.post("/login",async(req,res)=>{
-    try{
-        const {emailId,password} = req.body;
-        // find user by email
+app.post("/login", async (req, res) => {
+    try {
+        const { emailId, password } = req.body;
+
         const user = await User.findOne({ emailId });
         if (!user) {
-            return res.status(400).send("Your account is not registered with this email id!")
+            return res.status(400).send("Your account is not registered!")
         }
 
-        const isPasswordvalid = await bcrypt.compare(password,user.password)
-        if(!isPasswordvalid)
-        {
+        // using schema method instead of bcrypt.compare
+        const isPasswordValid = await user.validatePassword(password)
+        if (!isPasswordValid) {
             return res.status(400).send("Invalid credentials!")
         }
-        const token = await jwt.sign(
-            { _id: user._id },    // payload
-            "DevTinder@Secret",   // secret key
-            { expiresIn: "1d" }   // expiry
-        )
-        console.log(token)
+
+        // using schema method instead of jwt.sign
+        const token = await user.getJWT()
+
         res.cookie("token", token, {
             httpOnly: true,
             expires: new Date(Date.now() + 24 * 3600000)
         })
+
         res.send("User Logged In Successfully!")
 
-    }catch(e)
-    {
-        res.status(400).send("ERROR :" + e.message)
+    } catch(e) {
+        res.status(400).send("ERROR: " + e.message)
     }
 })
 
-app.get("/user", async (req, res) => {
+app.get("/user", userAuth, async (req, res) => {
     const email = req.body.emailId
     const user = await User.find({ emailId: email })
     res.send(user)
@@ -80,24 +75,10 @@ app.get("/feed", async (req, res) => {
     }
 })
 
-app.get("/profile", async (req, res) => {
+app.get("/profile", userAuth, async (req, res) => {
     try {
-        const cookies = req.cookies;
-        const { token } = cookies;
-
-        if (!token) {
-            return res.status(401).send("Please login first!")
-        }
-
-        const decodedMessage = jwt.verify(token, "DevTinder@Secret")
-        const { _id } = decodedMessage;
-        const user = await User.findById(_id);
-        if(!user)
-        {
-            throw new Error("User does not exist")
-        }
-        res.send(user)
-
+        // user already attached by userAuth! ✅
+        res.send(req.user)
     } catch(e) {
         res.status(400).send("something went wrong: " + e.message)
     }
@@ -143,6 +124,10 @@ app.patch("/user/:userId", async (req, res) => {
     } catch (e) {
         res.status(400).send("something went wrong");
     }
+})
+
+app.post("/sendConnectionRequest",async (req,res)=>{
+
 })
 
 connectDb().then(() => {

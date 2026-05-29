@@ -6,7 +6,9 @@ const app = express();
 const User = require("./models/user")
 const { validateSignUpData } = require('./utils/validation')
 const bcrypt = require("bcrypt");
-
+const jwt = require("jsonwebtoken")
+const cookieParser = require("cookie-parser");
+app.use(cookieParser());
 app.use(express.json())//reads json object , converts it in js object and we can read that body
 app.post('/signup', async (req, res) => {
 
@@ -43,6 +45,16 @@ app.post("/login",async(req,res)=>{
         {
             return res.status(400).send("Invalid credentials!")
         }
+        const token = await jwt.sign(
+            { _id: user._id },    // payload
+            "DevTinder@Secret",   // secret key
+            { expiresIn: "1d" }   // expiry
+        )
+        console.log(token)
+        res.cookie("token", token, {
+            httpOnly: true,
+            expires: new Date(Date.now() + 24 * 3600000)
+        })
         res.send("User Logged In Successfully!")
 
     }catch(e)
@@ -65,6 +77,29 @@ app.get("/feed", async (req, res) => {
     }
     catch (e) {
         res.status(400).send("something went wrong")
+    }
+})
+
+app.get("/profile", async (req, res) => {
+    try {
+        const cookies = req.cookies;
+        const { token } = cookies;
+
+        if (!token) {
+            return res.status(401).send("Please login first!")
+        }
+
+        const decodedMessage = jwt.verify(token, "DevTinder@Secret")
+        const { _id } = decodedMessage;
+        const user = await User.findById(_id);
+        if(!user)
+        {
+            throw new Error("User does not exist")
+        }
+        res.send(user)
+
+    } catch(e) {
+        res.status(400).send("something went wrong: " + e.message)
     }
 })
 
@@ -106,7 +141,7 @@ app.patch("/user/:userId", async (req, res) => {
         )
         res.send("User updated successfully!")
     } catch (e) {
-        res.status(400).send("something went wrong")
+        res.status(400).send("something went wrong");
     }
 })
 

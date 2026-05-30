@@ -1,134 +1,19 @@
 const express = require('express');
-
 const connectDb = require("./config/database")
 const app = express();
 
-const User = require("./models/user")
-const { validateSignUpData } = require('./utils/validation')
-const bcrypt = require("bcrypt");
-// const jwt = require("jsonwebtoken")
-const {userAuth} = require("./middlewares/auth")
 const cookieParser = require("cookie-parser");
 app.use(cookieParser());
 app.use(express.json())//reads json object , converts it in js object and we can read that body
 
-app.post('/signup', async (req, res) => {
-    try {
-        validateSignUpData(req)
-        const { firstName, lastName, emailId, password } = req.body;
-        const passwordHash = await bcrypt.hash(password, 10)
-        const user = new User({
-            firstName, lastName, emailId,
-            password: passwordHash
-        })
-        await user.save();
-        res.send("User added successfully")
-    } catch(e) {
-        res.status(400).send("ERROR: " + e.message)
-    }
-})
+const authRouter = require("./routes/auth")
+const profileRouter = require("./routes/profile")
+const requestRouter = require("./routes/requests")
 
-app.post("/login", async (req, res) => {
-    try {
-        const { emailId, password } = req.body;
+app.use("/", authRouter)
+app.use("/", profileRouter)
+app.use("/", requestRouter)
 
-        const user = await User.findOne({ emailId });
-        if (!user) {
-            return res.status(400).send("Your account is not registered!")
-        }
-
-        // using schema method instead of bcrypt.compare
-        const isPasswordValid = await user.validatePassword(password)
-        if (!isPasswordValid) {
-            return res.status(400).send("Invalid credentials!")
-        }
-
-        // using schema method instead of jwt.sign
-        const token = await user.getJWT()
-
-        res.cookie("token", token, {
-            httpOnly: true,
-            expires: new Date(Date.now() + 24 * 3600000)
-        })
-
-        res.send("User Logged In Successfully!")
-
-    } catch(e) {
-        res.status(400).send("ERROR: " + e.message)
-    }
-})
-
-app.get("/user", userAuth, async (req, res) => {
-    const email = req.body.emailId
-    const user = await User.find({ emailId: email })
-    res.send(user)
-})
-
-app.get("/feed", async (req, res) => {
-
-    try {
-        const user = await User.find({})
-        res.send(user)
-    }
-    catch (e) {
-        res.status(400).send("something went wrong")
-    }
-})
-
-app.get("/profile", userAuth, async (req, res) => {
-    try {
-        // user already attached by userAuth! ✅
-        res.send(req.user)
-    } catch(e) {
-        res.status(400).send("something went wrong: " + e.message)
-    }
-})
-
-app.delete("/user", async (req, res) => {
-    try {
-        const userId = req.body.userId; // move inside try!
-        const user = await User.findByIdAndDelete(userId)
-        res.send("User deleted successfully!")
-    } catch (e) {
-        res.status(400).send("something went wrong")
-    }
-})
-
-app.patch("/user/:userId", async (req, res) => {
-    try {
-
-        // {
-        //     "userId":"6a181718052ef82f4376bf82",
-        //     "age": 30,
-        //     "gender": "female"
-        //  } we willl loop thriugh every keys of object requested by user and will check if only every allowed updates is there
-        const updates = req.body
-        const userId = req.params?.userId; // move inside try!
-        const ALLOWED_UPDATES = ["photoURL", "about", "gender", "age", "skills"];
-        const isUpdateAllowed = Object.keys(updates).every(k => ALLOWED_UPDATES.includes(k));
-        if (!isUpdateAllowed) {
-            res.status(400).send("Update not allowed")
-        }
-        if (updates.skills && updates.skills.length > 5) {
-            return res.status(400).send("Skills cannot be more than 5!")
-        }
-        const user = await User.findByIdAndUpdate(
-            userId,      // 1st arg → id
-            updates,     // 2nd arg → what to update
-            {
-                runValidators: true,      // runs schema validation
-                returnDocument: "after"   // returns updated doc
-            }
-        )
-        res.send("User updated successfully!")
-    } catch (e) {
-        res.status(400).send("something went wrong");
-    }
-})
-
-app.post("/sendConnectionRequest",async (req,res)=>{
-
-})
 
 connectDb().then(() => {
     console.log("DB connection established")

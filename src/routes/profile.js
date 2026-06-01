@@ -1,6 +1,8 @@
 const express = require("express");
 const {userAuth} = require("../middlewares/auth")
 const { validateProfileData } = require('../utils/validation')
+const bcrypt = require("bcrypt");
+const validator = require("validator");
 
 const profileRouter = express.Router();
 
@@ -39,6 +41,33 @@ profileRouter.patch("/profile/edit", userAuth, async(req,res)=>{
     {
         res.status(400).send("something went wrong: " + err.message)
     }
+})
+
+profileRouter.patch("/profile/password", userAuth, async (req, res) => {
+   try{
+    const {oldPassword,newPassword} = req.body;
+    const isOldPasswordValid = await req.user.validatePassword(oldPassword);
+
+    if (!isOldPasswordValid) {
+        return res.status(400).send("Old password is incorrect!")
+    }
+
+    if (!validator.isStrongPassword(newPassword)) {
+        return res.status(400).send("Please choose a strong password!")
+    }
+
+    const hashedNewPassword = await bcrypt.hash(newPassword,10);
+    req.user.password = hashedNewPassword;
+    await req.user.save()
+    res.send("Password updated successfully!")
+
+
+}
+   catch(err)
+   {
+      res.status(400).send("ERROR:" + err.message);
+   }
+    
 })
 
 

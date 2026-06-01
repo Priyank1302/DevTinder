@@ -9,10 +9,12 @@ app.use(express.json())//reads json object , converts it in js object and we can
 const authRouter = require("./routes/auth")
 const profileRouter = require("./routes/profile")
 const requestRouter = require("./routes/requests")
+const userRouter = require("./routes/user")
 
 app.use("/", authRouter)
 app.use("/", profileRouter)
 app.use("/", requestRouter)
+app.use("/", userRouter)
 
 
 connectDb().then(() => {

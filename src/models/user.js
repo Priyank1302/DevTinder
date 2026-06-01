@@ -99,7 +99,7 @@ const userSchema = new mongoose.Schema({
     emailId: {
         type: String,
         required: true,
-        unique: true,
+        unique: true,//this becomes automatically index and makes query faster
         lowercase: true,
         trim: true,
         validate(value) {
@@ -123,11 +123,15 @@ const userSchema = new mongoose.Schema({
     },
     gender: {
         type: String,
-        validate(value) {
-            if (!["male", "female", "others"].includes(value)) {
-                throw new Error("Gender data is not valid!")
-            }
-        }
+        enum: {
+            values: ["Male", "Female", "Other"],
+            message: "{VALUE} is incorrect status type!"
+        },
+        // validate(value) {
+        //     if (!["male", "female", "others"].includes(value)) {
+        //         throw new Error("Gender data is not valid!")
+        //     }
+        // }
     },
     photoUrl: {
         type: String,
